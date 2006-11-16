@@ -1,0 +1,9 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+t/01_load.t
+t/02_login.t
+t/03_query_regr.t
+lib/WWW/Domain/Registry/VeriSign.pm
+META.yml                                 Module meta-data (added by MakeMaker)
