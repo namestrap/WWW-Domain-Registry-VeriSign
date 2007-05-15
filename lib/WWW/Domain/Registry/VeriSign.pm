@@ -8,13 +8,13 @@ use WWW::Mechanize;
 
 __PACKAGE__->mk_accessors(qw(mech));
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub new {
     my ($class, $id, $password) = @_;
     my $self = bless {}, $class;
     $self->{reg} = {
-                    base => 'https://www.verisign-grs.com',
+                    base => 'https://nsmanager.verisign-grs.com',
                     id => $id,
                     password => $password,
                 };
@@ -24,12 +24,12 @@ sub new {
 
 sub login {
     my $self = shift;
-    $self->mech->get($self->{reg}->{base} .'/registrartool/logon.jsp');
+    $self->mech->get($self->{reg}->{base} .'/ncc/login_page.do');
     $self->mech->submit_form(
                                form_number => 1,
                                fields => {
-                                          logonName   => $self->{reg}->{id},
-                                          password    => $self->{reg}->{password},
+                                          logonname     => $self->{reg}->{id},
+                                          logonpassword => $self->{reg}->{password},
                                       }
                            );
     $self->parse_login($self->mech->content);
@@ -37,47 +37,41 @@ sub login {
 
 sub parse_login {
     my ($self, $content) = @_;
-    $content =~ m/New User welcome center/;
+    $content =~ m/currently logged in/;
 }
 
-sub query_regr {
+sub account_view_page {
     my $self = shift;
-    $self->mech->get($self->{reg}->{base} .'/registrartool/query_regr.do');
-    $self->parse_query_regr($self->mech->content);
+    $self->mech->get($self->{reg}->{base} .'/ncc/account_view_page.do?MENU=Accounts');
+    $self->parse_account_view_page($self->mech->content);
 }
 
-sub parse_query_regr {
+sub parse_account_view_page {
     my ($self, $content) = @_;
-    my $content_from = qq(<font face=arial,helvetica size=2>);
-    my $content_till = qq(</font>);
+    my $content_from = qq(<div class="content">);
+    my $content_till = qq(</div>);
     return unless $content =~ /$content_from(.*?)$content_till/s;;
     $content = $1;
-    $content =~ s,\t, ,g;
-    $content =~ s, +, ,g;
-    $content =~ s,(\n )+,\n,g;
-    $content =~ s,\n+,\n,g;
-    $content =~ s,<dd>,,g;
-
     my $data;
-    while ($content =~ m{<li><b>([^:]+):</b>\n([^<]+)<}ig) {
+    while ($content =~ m{<td class="alt3"[^>]*>([^:]+):</td>\n\s+<td class="alt4"[^>]*>([^<]+)</td>\n}ig) {
         my($key, $val) = ($1, $2);
+        $val =~ s/&nbsp;?/ /g;
         $val =~ s/^\s+//;
         $val =~ s/\s+$//;
         $val =~ s/\n+/\n/g;
         $data->{lc($key)} = $val =~ m/\n/ ? [ split m/\n/ , $val ] : $val;
     }
 
-    $content =~ s,<a[^>]+>,,g;
-    $content =~ s,</a></li>,,g;
-    $content .= "<li>\n"; # adjustment
-    while ($content =~ m{<li><b>([^<]+)</b></li><br>\n([^<]+)<li>}ig) {
-        my($key, $val) = ($1, $2);
-        $val =~ s,\s+$,,;
-        $data->{lc($key)} = [ split m/\n/, $val ];
-    }
-
     return $data;
 }
+
+sub credit_balance_view_page {
+    my $self = shift;
+    $self->mech->get($self->{reg}->{base} .'/ncc/credit_balance_view_page.do?MENU=Finance');
+    $self->parse_credit_balance_view_page($self->mech->content);
+}
+
+*parse_credit_balance_view_page = \&parse_account_view_page;
 
 # Preloaded methods go here.
 
@@ -95,7 +89,7 @@ WWW::Domain::Registry::VeriSign - VeriSign NDS (https://www.verisign-grs.com/) R
 
   my $reg = WWW::Domain::Registry::VeriSign->new('id', 'password');
   $reg->login;
-  my $res = $reg->query_regr;
+  my $res = $reg->account_view_page;
   print Dumper $res;
 
 =head1 DESCRIPTION

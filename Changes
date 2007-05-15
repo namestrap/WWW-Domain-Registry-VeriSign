@@ -4,3 +4,5 @@ Revision history for Perl extension WWW::Domain::Registry::VeriSign.
 	- original version; created by h2xs 1.23 with options
 		-AX -n WWW::Domain::Registry::VeriSign
 
+0.02  15 17:29:46 JST 2007
+	- VeriSign site renewal
